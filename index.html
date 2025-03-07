@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Challenge Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            /* Use background image with fallback */
+            background-color: #0f0f1a;
+            background-image: linear-gradient(to bottom, #1a1a2e, #16213e, #0f3460);
+            color: white;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            background-color: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+
+        h1 {
+            color: #FFD700;
+            text-align: center;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .challenge {
+            display: none;
+        }
+
+        .challenge.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .challenge-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #FFD700;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .option {
+            background-color: rgba(128, 128, 128, 0.3);
+            padding: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .option:not(.disabled):hover {
+            background-color: rgba(255, 215, 0, 0.3);
+            transform: translateX(5px);
+        }
+
+        .option-label {
+            font-weight: bold;
+            color: #FFD700;
+            margin-right: 0.5rem;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background-color: rgba(128, 128, 128, 0.3);
+            border-radius: 5px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background-color: #FFD700;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .results {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .result-title {
+            text-align: center;
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: #FFD700;
+        }
+
+        .result-category {
+            margin-bottom: 1rem;
+        }
+
+        .result-label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-bar {
+            height: 24px;
+            background-color: rgba(128, 128, 128, 0.3);
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .result-progress {
+            height: 100%;
+            width: 0%;
+            transition: width 1s ease;
+        }
+
+        .safe-bar {
+            background-color: #4CAF50;
+        }
+
+        .calculated-bar {
+            background-color: #2196F3;
+        }
+
+        .risky-bar {
+            background-color: #F44336;
+        }
+
+        .result-percentage {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: bold;
+        }
+
+        .restart-btn {
+            display: block;
+            margin: 2rem auto 0;
+            padding: 0.8rem 1.5rem;
+            background-color: #FFD700;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .restart-btn:hover {
+            background-color: white;
+            transform: scale(1.05);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .audio-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        .audio-icon {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .muted .audio-icon {
+            fill: #888;
+        }
+
+        .volume-slider {
+            position: absolute;
+            bottom: 60px;
+            right: 0;
+            width: 100px;
+            height: 40px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+            display: none;
+            padding: 10px;
+        }
+
+        .audio-controls:hover .volume-slider {
+            display: block;
+        }
+        
+        #background-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -10;
+        }
+        
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: -5;
+        }
+
+        /* Styles for chance outcome */
+        .chance-outcome {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .outcome-content {
+            background-color: rgba(0, 0, 0, 0.9);
+            border-radius: 10px;
+            padding: 2rem;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .outcome-title {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .success .outcome-title {
+            color: #4CAF50;
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
+        }
+
+        .failure .outcome-title {
+            color: #F44336;
+            text-shadow: 0 0 10px rgba(244, 67, 54, 0.7);
+        }
+
+        .outcome-message {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .continue-btn {
+            padding: 0.8rem 1.5rem;
+            background-color: #FFD700;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .continue-btn:hover {
+            background-color: white;
+            transform: scale(1.05);
+        }
+
+        @keyframes pulseSuccess {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(76, 175, 80, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+
+        @keyframes pulseFailure {
+            0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(244, 67, 54, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+        }
+
+        .success .outcome-content {
+            animation: pulseSuccess 1.5s infinite;
+        }
+
+        .failure .outcome-content {
+            animation: pulseFailure 1.5s infinite;
+        }
+
+        .chance-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 8px;
+            background-color: #FF9800;
+            color: black;
+        }
+
+        /* Timer styles */
+        .timer-container {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .timer-text {
+            font-size: 1.2rem;
+            color: #FFD700;
+        }
+
+        .timer-value {
+            font-weight: bold;
+            font-size: 1.5rem;
+            background-color: rgba(255, 215, 0, 0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background image element -->
+    <img id="background-image" alt="Heist Background">
+    <div class="bg-overlay"></div>
+    
+    <div class="container">
+        <h1>The Risk Challenge</h1>
+        
+        <div class="progress-bar">
+            <div class="progress" id="progress-bar"></div>
+        </div>
+
+        <!-- Timer display added to each challenge -->
+        <div id="challenge-1" class="challenge active">
+            <div class="challenge-title">Challenge 1: The Laser Field </div>
+            <div class="timer-container">
+                <span class="timer-text">Options unlock in: <span class="timer-value" id="timer-1">10</span> seconds</span>
+            </div>
+            <div class="options">
+                <div class="option disabled" data-value="a" data-challenge="1">
+                    <span class="option-label">A:</span> Use the Laser-Cutting Tool (+20 points)
+                </div>
+                <div class="option disabled" data-value="b" data-challenge="1">
+                    <span class="option-label">B:</span> Attempt to Dodge the Lasers (Success:+30/Fail:-10)
+                    <span class="chance-tag">25% Chance</span>
+                </div>
+                <div class="option disabled" data-value="c" data-challenge="1" data-chance="true">
+                    <span class="option-label">C:</span> Attempt to Disable the Laser System (Success:+20/Fail:-10)
+                    <span class="chance-tag">50% Chance</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="challenge-2-success" class="challenge">
+            <div class="challenge-title">Challenge 2: The Guard Patrol (After Success)</div>
+            <div class="timer-container">
+                <span class="timer-text">Options unlock in: <span class="timer-value" id="timer-2-success">10</span> seconds</span>
+            </div>
+            <div class="options">
+                <div class="option disabled" data-value="a" data-challenge="2-success">
+                    <span class="option-label">A:</span> Distract the Guards (+20)
+                </div>
+                <div class="option disabled" data-value="b" data-challenge="2-success" data-chance="true">
+                    <span class="option-label">B:</span> Sneak Past the Guards (Success:+20/Fail:-10)
+                    <span class="chance-tag">25% Chance</span>
+                </div>
+                <div class="option disabled" data-value="c" data-challenge="2-success">
+                    <span class="option-label">C:</span> Knock Out the Guards (Success:+30/Fail:-10)
+                    <span class="chance-tag">50% Chance</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="challenge-2-failure" class="challenge">
+            <div class="challenge-title">Challenge 2: The Guard Patrol (After Failure)</div>
+            <div class="timer-container">
+                <span class="timer-text">Options unlock in: <span class="timer-value" id="timer-2-failure">10</span> seconds</span>
+            </div>
+            <div class="options">
+                <div class="option disabled" data-value="a" data-challenge="2-failure">
+                    <span class="option-label">A:</span> Run and Hide (Success:+10)
+                </div>
+                <div class="option disabled" data-value="b" data-challenge="2-failure" data-chance="true">
+                    <span class="option-label">B:</span> Distract the Guards (Success:+20/Fail:-10) 
+                    <span class="chance-tag">25% Chance</span>
+                </div>
+                <div class="option disabled" data-value="c" data-challenge="2-failure">
+                    <span class="option-label">C:</span> Fight the Guards (Success:+30/Fail:-10)
+                    <span class="chance-tag">50% Chance</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="challenge-3-success" class="challenge">
+            <div class="challenge-title">Challenge 3: The Vault Door (After Success)</div>
+            <div class="timer-container">
+                <span class="timer-text">Options unlock in: <span class="timer-value" id="timer-3-success">10</span> seconds</span>
+            </div>
+            <div class="options">
+                <div class="option disabled" data-value="a" data-challenge="3-success">
+                    <span class="option-label">A:</span> Hack the Vault System (+20)
+                    <span class="chance-tag">50% Chance</span>
+                </div>
+                <div class="option disabled" data-value="b" data-challenge="3-success">
+                    <span class="option-label">B:</span> Force the Vault Open (Success:+30/Fail:-10)
+                    <span class="chance-tag">25% Chance</span>
+                </div>
+                <div class="option disabled" data-value="c" data-challenge="3-success" data-chance="true">
+                    <span class="option-label">C:</span> Bribe the Guard for the Code (+10)
+                </div>
+            </div>
+        </div>
+
+        <div id="challenge-3-failure" class="challenge">
+            <div class="challenge-title">Challenge 3: The Vault Door (After Failure)</div>
+            <div class="timer-container">
+                <span class="timer-text">Options unlock in: <span class="timer-value" id="timer-3-failure">10</span> seconds</span>
+            </div>
+            <div class="options">
+                <div class="option disabled" data-value="a" data-challenge="3-failure">
+                    <span class="option-label">A:</span> Hack the Vault System (+20 but Time penalty in next challenge)
+                    <span class="chance-tag">50% Chance</span>
+                </div>
+                <div class="option disabled" data-value="b" data-challenge="3-failure">
+                    <span class="option-label">B:</span> Attempt to Physically Force the Vault Open (Success:+30 but triggers alarm/Fail:-20)
+                    <span class="chance-tag">25% Chance</span>
+                </div>
+                <div class="option disabled" data-value="c" data-challenge="3-failure" data-chance="true">
+                    <span class="option-label">C:</span> Bribe the Guard (+10)              
+                </div>
+            </div>
+        </div>
+
+        <div id="challenge-4-success" class="challenge">
+            <div class="challenge-title">Challenge 4: The Escape (After Success)</div>
+            <div class="timer-container">
+                <span class="timer-text">Options unlock in: <span class="timer-value" id="timer-4-success">10</span> seconds</span>
+            </div>
+            <div class="options">
+                <div class="option disabled" data-value="a" data-challenge="4-success">
+                    <span class="option-label">A:</span> Take the Secret Tunnel (+30)
+                </div>
+                <div class="option disabled" data-value="b" data-challenge="4-success" data-chance="true">
+                    <span class="option-label">B:</span> Exit Through the Main Entrance (Success:+20/Fail:-10)
+                    <span class="chance-tag">50% Chance</span>
+                </div>
+                <div class="option disabled" data-value="c" data-challenge="4-success">
+                    <span class="option-label">C:</span> Blend in with the Crowd (Success:+25/Fail:-15)
+                    <span class="chance-tag">25% Chance</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="challenge-4-failure" class="challenge">
+            <div class="challenge-title">Challenge 4: Getting Past The Laser Grid (After Failure)</div>
+            <div class="timer-container">
+                <span class="timer-text">Options unlock in: <span class="timer-value" id="timer-4-failure">10</span> seconds</span>
+            </div>
+            <div class="options">
+                <div class="option disabled" data-value="a" data-challenge="4-failure">
+                    <span class="option-label">A:</span> Take the Secret Tunnel (Safe)
+                </div>
+                <div class="option disabled" data-value="b" data-challenge="4-failure" data-chance="true">
+                    <span class="option-label">B:</span> Exit Through the Main Entrance (Success:+20/Fail:-5)
+                    <span class="chance-tag">50% Chance</span>
+                </div>
+                <div class="option disabled" data-value="c" data-challenge="4-failure">
+                    <span class="option-label">C:</span> Blend in with the Crowd (Success:+30/Fail:-5)
+                    <span class="chance-tag">25% Chance</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="challenge-5-success" class="challenge">
+            <div class="challenge-title">Challenge 5: The Escape Plan (After Success)</div>
+            <div class="timer-container">
+                <span class="timer-text">Options unlock in: <span class="timer-value" id="timer-5-success">10</span> seconds</span>
+            </div>
+            <div class="options">
+                <div class="option disabled" data-value="a" data-challenge="5-success">
+                    <span class="option-label">A:</span> Exit through the VIP lounge using your acquired credentials (Safe)
+                </div>
+                <div class="option disabled" data-value="b" data-challenge="5-success">
+                    <span class="option-label">B:</span> Use the executive elevator to the private garage (Some Risk)
+                </div>
+                <div class="option disabled" data-value="c" data-challenge="5-success" data-chance="true">
+                    <span class="option-label">C:</span> Call in helicopter extraction from the roof (Risky)
+                    <span class="chance-tag">75% Chance</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="challenge-5-failure" class="challenge">
+            <div class="challenge-title">Challenge 5: The Escape Plan (After Failure)</div>
+            <div class="timer-container">
+                <span class="timer-text">Options unlock in: <span class="timer-value" id="timer-5-failure">10</span> seconds</span>
+            </div>
+            <div class="options">
+                <div class="option disabled" data-value="a" data-challenge="5-failure">
+                    <span class="option-label">A:</span> Blend in with the cleaning staff and walk out (Safe)
+                </div>
+                <div class="option disabled" data-value="b" data-challenge="5-failure">
+                    <span class="option-label">B:</span> Use the freight elevator to the loading dock (Some Risk)
+                </div>
+                <div class="option disabled" data-value="c" data-challenge="5-failure" data-chance="true">
+                    <span class="option-label">C:</span> Create a diversion at the front entrance and escape through a window (Risky)
+                    <span class="chance-tag">25% Chance</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="results">
+            <div class="result-title">Your Risk Profile</div>
+            
+            <div class="result-category">
+                <span class="result-label">Safe Planner</span>
+                <div class="result-bar">
+                    <div class="result-progress safe-bar" id="safe-bar"></div>
+                    <span class="result-percentage" id="safe-percentage">0%</span>
+                </div>
+            </div>
+            
+            <div class="result-category">
+                <span class="result-label">Calculated Risk Taker</span>
+                <div class="result-bar">
+                    <div class="result-progress calculated-bar" id="calculated-bar"></div>
+                    <span class="result-percentage" id="calculated-percentage">0%</span>
+                </div>
+            </div>
+            
+            <div class="result-category">
+                <span class="result-label">Risky Leader</span>
+                <div class="result-bar">
+                    <div class="result-progress risky-bar" id="risky-bar"></div>
+                    <span class="result-percentage" id="risky-percentage">0%</span>
+                </div>
+            </div>
+
+            <button class="restart-btn" id="restart-btn">Try Again</button>
+        </div>
+    </div>
+
+    <!-- Chance outcome screen -->
+    <div id="chance-outcome" class="chance-outcome">
+        <div class="outcome-content">
+            <div class="outcome-title" id="outcome-title">SUCCESS</div>
+            <div class="outcome-message" id="outcome-message">Your plan worked perfectly! You've successfully disabled the laser system without triggering any alarms.</div>
+            <button class="continue-btn" id="continue-btn">Continue</button>
+        </div>
+    </div>
+
+    <div class="audio-controls" id="audio-controls">
+        <div class="volume-slider">
+            <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5">
+        </div>
+        <svg class="audio-icon" viewBox="0 0 24 24">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        </svg>
+    </div>
+
+    <audio id="background-music" loop>
+        <source src="#" type="audio/mpeg">
+    </audio>
+
+    <script>
+       // Fix for the timer functionality and chance outcomes
+document.addEventListener('DOMContentLoaded', function() {
+    // Try to load the background image
+    const backgroundImage = document.getElementById('background-image');
+    backgroundImage.src = 'heist-background.jpg';
+    
+    // Handle background image loading error (if the image doesn't exist)
+    backgroundImage.onerror = function() {
+        console.log('Background image not found, using fallback');
+        document.body.style.backgroundImage = "linear-gradient(to bottom, #1a1a2e, #16213e, #0f3460)";
+        backgroundImage.style.display = 'none';
+    };
+    
+    // Try to set up the audio file if available
+    const audioElement = document.getElementById('background-music');
+    try {
+        audioElement.src = 'suspense-music.mp3';
+    } catch (e) {
+        console.log('Audio file not found');
+    }
+    
+    const audioControls = document.getElementById('audio-controls');
+    const volumeSlider = document.getElementById('volume-slider');
+    
+    // Audio controls
+    audioControls.addEventListener('click', function() {
+        if (audioElement.paused) {
+            audioElement.play().catch(e => {
+                console.log('Audio play failed:', e);
+            });
+            audioControls.classList.remove('muted');
+        } else {
+            audioElement.pause();
+            audioControls.classList.add('muted');
+        }
+    });
+    
+    volumeSlider.addEventListener('input', function() {
+        audioElement.volume = this.value;
+    });
+    
+    // Initialize game
+    let currentChallenge = "1";
+    let totalChallenges = 5;
+    let answers = {
+        a: 0, // Safe
+        b: 0, // Calculated risk
+        c: 0  // Risky
+    };
+    let lastOutcomeSuccess = true; // Track the last outcome for branching
+    let currentTimerInterval = null; // Track the current timer interval
+    
+    // Start the first challenge timer immediately
+    startTimer(currentChallenge);
+    
+    // Chance percentages for different challenge options
+    const chancePercentages = {
+        "1-success-b": 25,
+        "1-failure-b": 75,
+        "1-success-c": 50,
+        "1-failure-c": 50,
+        "2-success-b": 25,
+        "2-failure-b": 75,
+        "2-success-c": 20,
+        "2-failure-c": 80,
+        "3-success-a": 50,
+        "3-failure-a": 50,
+        "3-success-b": 25,
+        "3-failure-b": 75,
+        "4-success-b": 50,
+        "4-failure-b": 50,
+        "4-success-c": 25,
+        "4-failure-c": 75,
+    };
+    
+    // Success/failure messages for each chance option
+    const outcomeMessages = {
+        "1c": {
+            success: "Your expert skills paid off! You bypassed the security system without triggering any alarms and gained entry through the roof.",
+            failure: "Your attempt to cut through the security system triggered silent alarms! You barely managed to escape detection and had to find another way in."
+        },
+        "2-success-b": {
+            success: "The fire alarm distraction was perfectly timed! Security personnel left their posts to follow evacuation protocols.",
+            failure: "The fire alarm seemed suspicious to the security team! They've called for backup and increased patrols in your area."
+        },
+        "2-failure-b": {
+            success: "The ventilation system provided a perfect alternate route! You bypassed the heightened security completely.",
+            failure: "The ventilation shaft was narrower than expected and you got stuck! You had to make noise to free yourself, alerting nearby guards to your presence."
+        },
+        "3-success-c": {
+            success: "The thermal drill worked flawlessly! You accessed the safe contents in record time with minimal noise.",
+            failure: "The thermal drill overheated and created more smoke than expected! While you got the safe open, the smoke triggered internal sensors."
+        },
+        "3-failure-c": {
+            success: "The plasma cutter sliced through the safe wall with surgical precision! You gained access without further complications.",
+            failure: "The plasma cutter created a shower of sparks that triggered the fire suppression system! Water is now pouring down, creating additional challenges."
+        },
+        "4-success-b": {
+            success: "Your mirror system worked brilliantly! The lasers were redirected, creating a clear path forward.",
+            failure: "One of your mirrors slipped from its position! You managed to catch it before it hit the ground, but one laser beam was briefly interrupted."
+        },
+        "4-failure-b": {
+            success: "You managed to crawl under the lowest lasers with millimeters to spare! Your flexibility saved the day.",
+            failure: "As you crawled under the laser, your equipment snagged on something! You triggered a beam and the system is now on high alert."
+        },
+        "5-success-c": {
+            success: "The helicopter arrived precisely on schedule! You made it to the roof and escaped with the loot before anyone knew what happened.",
+            failure: "The helicopter pilot had to abort the landing due to unexpected security drones! You'll need to find another way out quickly."
+        },
+        "5-failure-c": {
+            success: "Your diversion at the front entrance worked perfectly! While security rushed there, you slipped out through a side window unnoticed.",
+            failure: "Your diversion wasn't convincing enough! Security became suspicious and locked down all exits, including your planned escape window."
+        }
+    };
+    
+    // Timer functionality
+    function startTimer(challengeId) {
+        console.log("Starting timer for challenge:", challengeId);
+        
+        // Clear any existing timer
+        if (currentTimerInterval) {
+            clearInterval(currentTimerInterval);
+        }
+        
+        const timerElement = document.getElementById(`timer-${challengeId}`);
+        if (!timerElement) {
+            console.error(`Timer element not found for challenge: ${challengeId}`);
+            return;
+        }
+        
+        const optionsInChallenge = document.querySelectorAll(`.option[data-challenge="${challengeId}"]`);
+        console.log("Found options:", optionsInChallenge.length);
+        
+        let timeLeft = 10;
+        
+        // Update timer display
+        timerElement.textContent = timeLeft;
+        
+        // Set options as disabled
+        optionsInChallenge.forEach(option => {
+            option.classList.add('disabled');
+        });
+        
+        // Start countdown
+        currentTimerInterval = setInterval(() => {
+            timeLeft--;
+            timerElement.textContent = timeLeft;
+            
+            // When timer reaches 0, enable options
+            if (timeLeft <= 0) {
+                clearInterval(currentTimerInterval);
+                currentTimerInterval = null;
+                console.log("Timer finished, enabling options");
+                
+                optionsInChallenge.forEach(option => {
+                    option.classList.remove('disabled');
+                    console.log("Removed disabled class from option:", option);
+                });
+                
+                // Add click event listeners to the options after they're enabled
+                optionsInChallenge.forEach(option => {
+                    option.addEventListener('click', handleOptionClick);
+                });
+            }
+        }, 1000);
+        
+        return currentTimerInterval;
+    }
+    
+    // Handle option click
+    function handleOptionClick(event) {
+        // Only proceed if the option is not disabled
+        if (event.currentTarget.classList.contains('disabled')) {
+            return;
+        }
+        
+        const optionValue = event.currentTarget.getAttribute('data-value');
+        const challengeId = event.currentTarget.getAttribute('data-challenge');
+        const isChanceOption = event.currentTarget.hasAttribute('data-chance');
+        
+        console.log(`Option selected: ${optionValue} for challenge ${challengeId} (Chance: ${isChanceOption})`);
+        
+        // Record the answer
+        answers[optionValue]++;
+        
+        // Handle chance options
+        if (isChanceOption) {
+            // Get the chance percentage for this option
+            const chanceKey = `${challengeId}${optionValue}`;
+            const successChance = chancePercentages[chanceKey] || 50;
+            
+            console.log(`This is a chance option with ${successChance}% success chance`);
+            
+            // Determine if successful based on random chance
+            const randomValue = Math.random() * 100;
+            const isSuccess = randomValue < successChance;
+            
+            console.log(`Random value: ${randomValue}, Success: ${isSuccess}`);
+            
+            lastOutcomeSuccess = isSuccess;
+            
+            // Show the chance outcome
+            showChanceOutcome(isSuccess, challengeId, optionValue);
+        } else {
+            // Move to the next challenge directly
+            moveToNextChallenge();
+        }
+    }
+    
+    // Show chance outcome (success or failure)
+    function showChanceOutcome(isSuccess, challengeId, optionValue) {
+        const outcomeElement = document.getElementById('chance-outcome');
+        const titleElement = document.getElementById('outcome-title');
+        const messageElement = document.getElementById('outcome-message');
+        const continueBtn = document.getElementById('continue-btn');
+        
+        // Set the outcome title and message
+        titleElement.textContent = isSuccess ? "SUCCESS" : "FAILURE";
+        
+        // Get the appropriate message
+        const chanceKey = `${challengeId}${optionValue}`;
+        console.log(`Looking for message with key: ${chanceKey}`);
+        
+        let message;
+        if (outcomeMessages[chanceKey]) {
+            message = isSuccess ? outcomeMessages[chanceKey].success : outcomeMessages[chanceKey].failure;
+        } else {
+            console.error(`No outcome message found for ${chanceKey}`);
+            message = isSuccess ? 
+                "Your plan worked perfectly!" : 
+                "Unfortunately, your plan didn't work as expected.";
+        }
+            
+        messageElement.textContent = message;
+        
+        // Update the outcome appearance
+        outcomeElement.className = 'chance-outcome'; // Reset classes
+        outcomeElement.classList.add(isSuccess ? 'success' : 'failure');
+        outcomeElement.style.display = 'flex';
+        
+        // Set up the continue button - make sure we remove previous event listeners
+        continueBtn.replaceWith(continueBtn.cloneNode(true));
+        const newContinueBtn = document.getElementById('continue-btn');
+        
+        newContinueBtn.addEventListener('click', function() {
+            outcomeElement.style.display = 'none';
+            
+            // Move to the next challenge
+            moveToNextChallenge();
+        });
+    }
+    
+    // Move to the next challenge
+    function moveToNextChallenge() {
+        // Hide current challenge
+        const currentChallengeElement = document.getElementById(`challenge-${currentChallenge}`);
+        currentChallengeElement.classList.remove('active');
+        
+        // Determine the next challenge based on current challenge and outcome
+        let nextChallenge;
+        const currentChallengeNum = parseInt(currentChallenge.split('-')[0]);
+        
+        if (currentChallengeNum < totalChallenges) {
+            nextChallenge = (currentChallengeNum + 1) + (lastOutcomeSuccess ? '-success' : '-failure');
+        } else {
+            // If we've finished all challenges, show results
+            showResults();
+            return;
+        }
+        
+        // Show next challenge
+        const nextChallengeElement = document.getElementById(`challenge-${nextChallenge}`);
+        
+        if (nextChallengeElement) {
+            nextChallengeElement.classList.add('active');
+            currentChallenge = nextChallenge;
+            updateProgress();
+            
+            // Start the timer for the new challenge
+            startTimer(nextChallenge);
+        } else {
+            console.error(`Next challenge element not found: challenge-${nextChallenge}`);
+            showResults(); // Fallback to results if something went wrong
+        }
+    }
+    
+    // Update progress bar
+    function updateProgress() {
+        // Calculate the numeric part from the currentChallenge string
+        const challengeNumber = parseInt(currentChallenge.split('-')[0]);
+        const progressPercentage = ((challengeNumber - 1) / totalChallenges) * 100;
+        document.getElementById('progress-bar').style.width = progressPercentage + '%';
+    }
+    
+    // Show final results
+    function showResults() {
+        // Hide all challenges
+        document.querySelectorAll('.challenge').forEach(challenge => {
+            challenge.classList.remove('active');
+        });
+        
+        // Calculate percentages
+        const total = answers.a + answers.b + answers.c;
+        const safePercentage = Math.round((answers.a / total) * 100) || 0;
+        const calculatedPercentage = Math.round((answers.b / total) * 100) || 0;
+        const riskyPercentage = Math.round((answers.c / total) * 100) || 0;
+        
+        // Update result bars
+        document.getElementById('safe-bar').style.width = safePercentage + '%';
+        document.getElementById('calculated-bar').style.width = calculatedPercentage + '%';
+        document.getElementById('risky-bar').style.width = riskyPercentage + '%';
+        
+        // Update percentage text
+        document.getElementById('safe-percentage').textContent = safePercentage + '%';
+        document.getElementById('calculated-percentage').textContent = calculatedPercentage + '%';
+        document.getElementById('risky-percentage').textContent = riskyPercentage + '%';
+        
+        // Show results
+        document.getElementById('results').classList.add('active');
+        
+        // Set up restart button - remove previous event listeners first
+        const restartBtn = document.getElementById('restart-btn');
+        restartBtn.replaceWith(restartBtn.cloneNode(true));
+        document.getElementById('restart-btn').addEventListener('click', restartGame);
+    }
+    
+    // Restart the game
+    function restartGame() {
+        // Reset variables
+        currentChallenge = "1";
+        answers = { a: 0, b: 0, c: 0 };
+        lastOutcomeSuccess = true;
+        
+        // Reset progress bar
+        document.getElementById('progress-bar').style.width = '0%';
+        
+        // Hide results
+        document.getElementById('results').classList.remove('active');
+        
+        // Show first challenge
+        document.querySelectorAll('.challenge').forEach(challenge => {
+            challenge.classList.remove('active');
+        });
+        document.getElementById('challenge-1').classList.add('active');
+        
+        // Start the timer for the first challenge
+        startTimer(currentChallenge);
+    }
+});
+    </script>
+</body>
